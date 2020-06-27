@@ -3,46 +3,67 @@ import os, csv, cv2
 import numpy as np
 from scipy import ndimage
 import tensorflow as tf
+import sklearn
+from math import ceil
+from random import shuffle
+import matplotlib.pyplot as plt
 
+def generator(samples, batch_size=32):
+    correction = [0, 0.2, -0.2]
+    num_samples = len(samples)
+    while 1: # Loop forever so the generator never terminates
+        shuffle(samples)
+        
+        for offset in range(0, num_samples, batch_size):
+            batch_samples = samples[offset:offset+batch_size]
+
+            images = []
+            labels = []
+            for batch_sample in batch_samples:
+                for i in range(3):
+                    filename = batch_sample[i].split('/')[-1]
+                    current_path = path +'IMG/' + filename
+                    name = './IMG/'+batch_sample[0].split('/')[-1]
+                
+                    image = ndimage.imread(current_path)  
+                    images.append(image)
+                    labels.append(float(line[3]) + correction[i])
+
+            ## Data Augmentation
+            augmented_images, augmented_labels = [], []
+            for image, label in zip(images, labels):
+                augmented_images.append(image)
+                augmented_labels.append(label)
+                augmented_images.append(cv2.flip(image,1))
+                augmented_labels.append(label*-1.0)
+
+
+            # trim image to only see section with road
+            X_train = np.array(augmented_images)
+            y_train = np.array(augmented_labels)
+            yield sklearn.utils.shuffle(X_train, y_train)
+
+### ---------------------------------------------- Loading Data ------------------------------------------
 # Loading data from several sources
-source_paths = ["../data/data_22_06/", "../data/data_26_06/","data/"]
-correction = [0, 0.2, -0.2]
-images = []
-labels = []
+#source_paths = ["../data/data_22_06/", "../data/data_26_06/","data/"]
+source_paths = ["data/"]
+
+samples = []
 for path in source_paths:
     print(path)
-    lines = []
     with open(path+"driving_log.csv") as csvfile:
         reader = csv.reader(csvfile)
         if path == "data/":
             next(reader)
         for line in reader:
-            lines.append(line)
+            samples.append(line)
 
-    for line in lines:
-        for i in range(3):
-            source_path = line[i]
-            filename = source_path.split('/')[-1]
-            current_path = path +'IMG/' + filename
-            image = ndimage.imread(current_path)  
-            images.append(image)
+            
+from sklearn.model_selection import train_test_split
+train_samples, validation_samples = train_test_split(samples, test_size=0.2)
 
-            labels.append(float(line[3]) + correction[i])
-
-## Data Augmentation
-augmented_images, augmented_labels = [], []
-for image, label in zip(images, labels):
-    augmented_images.append(image)
-    augmented_labels.append(label)
-    augmented_images.append(cv2.flip(image,1))
-    augmented_labels.append(label*-1.0)
-
-X_train = np.array(augmented_images)
-Y_train = np.array(augmented_labels)
-
-print("Images length is", len(augmented_images))
-print("Labels length is", len(augmented_labels), "minimum value is {0} and maximum valus is {1}".format(min(augmented_labels), max(augmented_labels)))
-
+print("Train samples length is", len(train_samples))
+print("Validation samples length is", len(validation_samples))
 
 ###--------------------------------- Neural Network Model ------------------------------------------------------ ###
 from keras.applications.inception_v3 import InceptionV3, preprocess_input
@@ -56,66 +77,56 @@ debug = True
 batch_size = 32
 epochs = 2
 
-'''
-# Input Layer
-inputs = Input(shape=(160,320,3))
-
-# Create the base pre-trained model
-inception_model = InceptionV3(weights='imagenet', include_top=False,
-                        input_shape=(160,320,3))
-
-# Freeze all convolutional InceptionV3 layers
-for layer in inception_model.layers:
-    layer.trainable = False
-
-# Pre-process the input with Kera's Lambda layer
-preprocessed_inputs = Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(160,320,3))
-
-
-tf.reset_default_graph()
-
-# Add the top layers
-#x = preprocessed_inputs(inputs)
-x = inception_model(inputs)
-#x = inception_model.output
-end_pooling = GlobalAveragePooling2D()(x)
-x = Dense(512, activation='relu')(end_pooling)
-prediction = Dense(1, activation='linear')(x)
-
-# Build the model to train
-## test model = Model(inputs=inception.input, outputs=prediction)
-model = Model(inputs=inputs, outputs=prediction)
-'''
- 
+# compile and train the model using the generator function
+train_generator = generator(train_samples, batch_size=batch_size)
+validation_generator = generator(validation_samples, batch_size=batch_size)
+    
+    
 # Build a Sequential Model
 model = Sequential()
 model.add(Cropping2D(cropping=((50,20), (0,0)), input_shape=(160,320,3)))
 model.add(Lambda(lambda x: (x / 255.0) - 0.5))
-model.add(Conv2D(filters=32, kernel_size=(5,5), strides=(1,1), padding='valid'))
+
+# Conv 1
+model.add(Conv2D(filters=24, kernel_size=(5,5), strides=(2,2), padding='valid'))
 model.add(Activation('relu'))
-# Max Pooling
-model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding='valid'))
+#model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding='valid'))
 model.add(Dropout(0.5))
 
-model.add(Conv2D(filters=96, kernel_size=(5,5), strides=(1,1), padding='valid'))
+# Conv 2
+model.add(Conv2D(filters=36, kernel_size=(5,5), strides=(2,2), padding='valid'))
 model.add(Activation('relu'))
-# Max Pooling
-model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding='valid'))
+#model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding='valid'))
 model.add(Dropout(0.5))
 
-model.add(Conv2D(filters=256, kernel_size=(5,5), strides=(1,1), padding='valid'))
+# Conv 3
+model.add(Conv2D(filters=48, kernel_size=(5,5), strides=(2,2), padding='valid'))
 model.add(Activation('relu'))
-# Max Pooling
-model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding='valid'))
+#model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding='valid'))
+model.add(Dropout(0.5))
+
+# Conv 4
+model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding='valid'))
+model.add(Activation('relu'))
+#model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding='valid'))
+model.add(Dropout(0.5))
+
+# Conv 5
+model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding='valid'))
+model.add(Activation('relu'))
+#model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding='valid'))
 model.add(Dropout(0.5))
 
 model.add(Flatten())
-model.add(Dense(512))
-model.add(Dense(84))
+
+# Fully Connected 1
+model.add(Dense(100))
+# Fully Connected 2
+model.add(Dense(50))
+# Fully Connected 3
 model.add(Dense(1))
 
 # compile the model 
-#model.compile(optimizer='rmsprop', loss='mean_squared_error')
 model.compile(optimizer='adam', loss='mse')
 
 if debug:
@@ -124,26 +135,26 @@ if debug:
     model.summary()
 
 # Train the model
-model.fit(
-    X_train,
-    Y_train,
-    validation_split = 0.2,
-    epochs = epochs, 
-    shuffle = True)
+history_object = model.fit_generator(train_generator, 
+                    steps_per_epoch=ceil(len(train_samples)/batch_size), 
+                    validation_data=validation_generator, 
+                    validation_steps=ceil(len(validation_samples)/batch_size), 
+                    epochs=epochs, verbose=1)
 
 # Save the model
 model.save('model.h5')
 
-'''
-### print the keys contained in the history object
-print(model.history.keys())
 
-### plot the training and validation loss for each epoch
-plt.plot(model.history['loss'])
-plt.plot(model.history['val_loss'])
-plt.title('model mean squared error loss')
-plt.ylabel('mean squared error loss')
-plt.xlabel('epoch')
-plt.legend(['training set', 'validation set'], loc='upper right')
-plt.show()
-'''
+### ---------------------------------------------- Plot Training and Validation Results ---------------------------
+if debug:
+    # print the keys contained in the history object
+    print(history_object.history.keys())
+
+    # plot the training and validation loss for each epoch
+    plt.plot(history_object.history['loss'])
+    plt.plot(history_object.history['val_loss'])
+    plt.title('model mean squared error loss')
+    plt.ylabel('mean squared error loss')
+    plt.xlabel('epoch')
+    plt.legend(['training set', 'validation set'], loc='upper right')
+    plt.show()
