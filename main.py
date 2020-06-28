@@ -22,11 +22,19 @@ def generator(samples, batch_size=32):
             for batch_sample in batch_samples:
                 for i in range(3):
                     filename = batch_sample[i].split('/')[-1]
-                    current_path = path +'IMG/' + filename
-                    name = './IMG/'+batch_sample[0].split('/')[-1]
+                    
+                    if len(batch_sample[i].split('/')) > 2: # The training data from Udacity has a different format
+                        data_dir = batch_sample[i].split('/')[3]
+                    else:
+                        data_dir = "data"
+                                            
+                    current_path = "/opt/carnd_p3/" + data_dir +'/IMG/' + filename
                 
                     image = ndimage.imread(current_path)  
-                    images.append(image)
+                    yuv=cv2.cvtColor(image,cv2.COLOR_RGB2YUV)
+                    
+                    #images.append(image)
+                    images.append(yuv)
                     labels.append(float(line[3]) + correction[i])
 
             ## Data Augmentation
@@ -38,22 +46,19 @@ def generator(samples, batch_size=32):
                 augmented_labels.append(label*-1.0)
 
 
-            # trim image to only see section with road
             X_train = np.array(augmented_images)
             y_train = np.array(augmented_labels)
             yield sklearn.utils.shuffle(X_train, y_train)
 
 ### ---------------------------------------------- Loading Data ------------------------------------------
 # Loading data from several sources
-#source_paths = ["../data/data_22_06/", "../data/data_26_06/","data/"]
-source_paths = ["data/"]
+source_paths = ["/opt/carnd_p3/data_22_06/", "/opt/carnd_p3/data_26_06/","/opt/carnd_p3/data/"]
 
 samples = []
 for path in source_paths:
-    print(path)
     with open(path+"driving_log.csv") as csvfile:
         reader = csv.reader(csvfile)
-        if path == "data/":
+        if path == "/opt/carnd_p3/data/":
             next(reader)
         for line in reader:
             samples.append(line)
@@ -75,7 +80,7 @@ from keras.preprocessing.image import ImageDataGenerator
 
 debug = True
 batch_size = 32
-epochs = 2
+epochs = 3
 
 # compile and train the model using the generator function
 train_generator = generator(train_samples, batch_size=batch_size)
@@ -91,31 +96,31 @@ model.add(Lambda(lambda x: (x / 255.0) - 0.5))
 model.add(Conv2D(filters=24, kernel_size=(5,5), strides=(2,2), padding='valid'))
 model.add(Activation('relu'))
 #model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding='valid'))
-model.add(Dropout(0.5))
+#model.add(Dropout(0.5))
 
 # Conv 2
 model.add(Conv2D(filters=36, kernel_size=(5,5), strides=(2,2), padding='valid'))
 model.add(Activation('relu'))
 #model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding='valid'))
-model.add(Dropout(0.5))
+#model.add(Dropout(0.5))
 
 # Conv 3
 model.add(Conv2D(filters=48, kernel_size=(5,5), strides=(2,2), padding='valid'))
 model.add(Activation('relu'))
 #model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding='valid'))
-model.add(Dropout(0.5))
+#model.add(Dropout(0.5))
 
 # Conv 4
 model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding='valid'))
 model.add(Activation('relu'))
 #model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding='valid'))
-model.add(Dropout(0.5))
+#model.add(Dropout(0.5))
 
 # Conv 5
 model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding='valid'))
 model.add(Activation('relu'))
 #model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding='valid'))
-model.add(Dropout(0.5))
+#model.add(Dropout(0.5))
 
 model.add(Flatten())
 
