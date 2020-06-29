@@ -33,7 +33,6 @@ def generator(samples, batch_size=32):
                     image = ndimage.imread(current_path)  
                     yuv=cv2.cvtColor(image,cv2.COLOR_RGB2YUV)
                     
-                    #images.append(image)
                     images.append(yuv)
                     labels.append(float(line[3]) + correction[i])
 
@@ -52,7 +51,8 @@ def generator(samples, batch_size=32):
 
 ### ---------------------------------------------- Loading Data ------------------------------------------
 # Loading data from several sources
-source_paths = ["/opt/carnd_p3/data_22_06/", "/opt/carnd_p3/data_26_06/","/opt/carnd_p3/data/"]
+#source_paths = ["/opt/carnd_p3/data_22_06/", "/opt/carnd_p3/data_26_06/","/opt/carnd_p3/data/"]
+source_paths = ["/opt/carnd_p3/data_29_06/"]
 
 samples = []
 for path in source_paths:
@@ -78,9 +78,9 @@ from keras.layers import Dense, GlobalAveragePooling2D, Lambda, Input, Flatten, 
 from keras.layers import Dropout
 from keras.preprocessing.image import ImageDataGenerator
 
-debug = True
+debug = False
 batch_size = 32
-epochs = 3
+epochs = 5
 
 # compile and train the model using the generator function
 train_generator = generator(train_samples, batch_size=batch_size)
@@ -90,8 +90,8 @@ validation_generator = generator(validation_samples, batch_size=batch_size)
 # Build a Sequential Model
 model = Sequential()
 model.add(Cropping2D(cropping=((50,20), (0,0)), input_shape=(160,320,3)))
-model.add(Lambda(lambda x: (x / 255.0) - 0.5))
-
+#model.add(Lambda(lambda x: (x / 255.0) - 0.5))
+model.add(Lambda(lambda x: (x - 128) / 128))
 # Conv 1
 model.add(Conv2D(filters=24, kernel_size=(5,5), strides=(2,2), padding='valid'))
 model.add(Activation('relu'))
@@ -125,9 +125,9 @@ model.add(Activation('relu'))
 model.add(Flatten())
 
 # Fully Connected 1
-model.add(Dense(100))
+model.add(Dense(1000))
 # Fully Connected 2
-model.add(Dense(50))
+model.add(Dense(100))
 # Fully Connected 3
 model.add(Dense(1))
 
