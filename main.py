@@ -8,6 +8,7 @@ from math import ceil
 from random import shuffle
 import matplotlib.pyplot as plt
 
+### ---------------------------------------------- Data Generator ------------------------------------------ ###
 def generator(samples, batch_size=32):
     correction = [0, 0.2, -0.2]
     num_samples = len(samples)
@@ -49,7 +50,7 @@ def generator(samples, batch_size=32):
             y_train = np.array(augmented_labels)
             yield sklearn.utils.shuffle(X_train, y_train)
 
-### ---------------------------------------------- Loading Data ------------------------------------------
+### ---------------------------------------------- Loading Data ------------------------------------------ ###
 # Loading data from several sources
 #source_paths = ["/opt/carnd_p3/data_22_06/", "/opt/carnd_p3/data_26_06/","/opt/carnd_p3/data/"]
 source_paths = ["/opt/carnd_p3/data_29_06/"]
@@ -63,7 +64,7 @@ for path in source_paths:
         for line in reader:
             samples.append(line)
 
-            
+### ---------------------------------------------- Traning and Validation Data Split ------------------------------------------ ###     
 from sklearn.model_selection import train_test_split
 train_samples, validation_samples = train_test_split(samples, test_size=0.2)
 
@@ -71,10 +72,8 @@ print("Train samples length is", len(train_samples))
 print("Validation samples length is", len(validation_samples))
 
 ###--------------------------------- Neural Network Model ------------------------------------------------------ ###
-from keras.applications.inception_v3 import InceptionV3, preprocess_input
-from keras.preprocessing import image
 from keras.models import Model, Sequential
-from keras.layers import Dense, GlobalAveragePooling2D, Lambda, Input, Flatten, Conv2D, MaxPooling2D, Activation, Cropping2D
+from keras.layers import Dense, Lambda, Flatten, Conv2D, MaxPooling2D, Activation, Cropping2D
 from keras.layers import Dropout
 from keras.preprocessing.image import ImageDataGenerator
 
@@ -90,37 +89,26 @@ validation_generator = generator(validation_samples, batch_size=batch_size)
 # Build a Sequential Model
 model = Sequential()
 model.add(Cropping2D(cropping=((50,20), (0,0)), input_shape=(160,320,3)))
-#model.add(Lambda(lambda x: (x / 255.0) - 0.5))
 model.add(Lambda(lambda x: (x - 128) / 128))
 # Conv 1
 model.add(Conv2D(filters=24, kernel_size=(5,5), strides=(2,2), padding='valid'))
 model.add(Activation('relu'))
-#model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding='valid'))
-#model.add(Dropout(0.5))
 
 # Conv 2
 model.add(Conv2D(filters=36, kernel_size=(5,5), strides=(2,2), padding='valid'))
 model.add(Activation('relu'))
-#model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding='valid'))
-#model.add(Dropout(0.5))
 
 # Conv 3
 model.add(Conv2D(filters=48, kernel_size=(5,5), strides=(2,2), padding='valid'))
 model.add(Activation('relu'))
-#model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding='valid'))
-#model.add(Dropout(0.5))
 
 # Conv 4
 model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding='valid'))
 model.add(Activation('relu'))
-#model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding='valid'))
-#model.add(Dropout(0.5))
 
 # Conv 5
 model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding='valid'))
 model.add(Activation('relu'))
-#model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding='valid'))
-#model.add(Dropout(0.5))
 
 model.add(Flatten())
 
@@ -139,7 +127,7 @@ if debug:
     # Check the summary of this new model to confirm the architecture
     model.summary()
 
-# Train the model
+### --------------------------------- Train and save the model ------------------------------------------------------ ###
 history_object = model.fit_generator(train_generator, 
                     steps_per_epoch=ceil(len(train_samples)/batch_size), 
                     validation_data=validation_generator, 
@@ -150,7 +138,7 @@ history_object = model.fit_generator(train_generator,
 model.save('model.h5')
 
 
-### ---------------------------------------------- Plot Training and Validation Results ---------------------------
+### ---------------------------------------------- Plot Training and Validation Results ----------------------- ###
 if debug:
     # print the keys contained in the history object
     print(history_object.history.keys())
