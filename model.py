@@ -52,7 +52,6 @@ def generator(samples, batch_size=32):
 
 ### ---------------------------------------------- Loading Data ------------------------------------------ ###
 # Loading data from several sources
-#source_paths = ["/opt/carnd_p3/data_22_06/", "/opt/carnd_p3/data_26_06/","/opt/carnd_p3/data/"]
 source_paths = ["/opt/carnd_p3/data_29_06/"]
 
 samples = []
@@ -76,8 +75,9 @@ from keras.models import Model, Sequential
 from keras.layers import Dense, Lambda, Flatten, Conv2D, MaxPooling2D, Activation, Cropping2D
 from keras.layers import Dropout
 from keras.preprocessing.image import ImageDataGenerator
+from keras.callbacks import TensorBoard
 
-debug = False
+debug = True
 batch_size = 32
 epochs = 5
 
@@ -128,11 +128,14 @@ if debug:
     model.summary()
 
 ### --------------------------------- Train and save the model ------------------------------------------------------ ###
+tensorboard_callback = TensorBoard(log_dir="./logs")
+
 history_object = model.fit_generator(train_generator, 
                     steps_per_epoch=ceil(len(train_samples)/batch_size), 
                     validation_data=validation_generator, 
                     validation_steps=ceil(len(validation_samples)/batch_size), 
-                    epochs=epochs, verbose=1)
+                    epochs=epochs, verbose=1,
+                    callbacks=[tensorboard_callback])
 
 # Save the model
 model.save('model.h5')
@@ -150,4 +153,7 @@ if debug:
     plt.ylabel('mean squared error loss')
     plt.xlabel('epoch')
     plt.legend(['training set', 'validation set'], loc='upper right')
+    
+    plt.savefig(os.path.join("examples", "model_loss"))
     plt.show()
+    plt.close()
