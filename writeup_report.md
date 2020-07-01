@@ -38,7 +38,7 @@ I created the file "model.py" to train a neural network to predict steering angl
 
 The "model.py" file can be logically divided by 6 parts:
 
-* Data Generator: 'generator' function (main.py line 12) which read the "center, right and left" images, adjusts the steering measurements for the side camera images, add the flipping images and steering Measurements and preprocess it on the fly, in batch size portions to feed into the convolution neural network model.
+* Data Generator: 'generator' function (model.py line 12) which read the "center, right and left" images, adjusts the steering measurements for the side camera images, add the flipping images and steering Measurements and preprocess it on the fly, in batch size portions to feed into the convolution neural network model.
 * Loading data: Load the images and steering measurements from a list of sources path into samples
 * Traning and Validation Data Split: Divide the samples into trainig and validation data set using the train_test_split function from sklearn.model_selection. The split ratio used was 20% for validation size.
 * Neural Network Model: Build a Convolution Neural Network using Keras. Below the model architecture is detailed.
@@ -103,3 +103,5 @@ From the image we can see that model results a final training loss os around 0.0
 ### Step 3 - Test that the model successfully drives around track one without leaving the road
 
 After training and saving the model as file 'model.h5', I launch the simulator on autonomous mode and run the script 'python drive.py model.h5'. I noted that the vehicle was able to drive autonomously around the track without leaving the road.
+
+The file "video.mp4" is a video os recording of your vehicle driving autonomously at least one lap around the track.
